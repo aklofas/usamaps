@@ -3,7 +3,7 @@ from argparse import ArgumentParser, FileType
 from importlib.util import spec_from_file_location, module_from_spec
 from sys import path
 
-parser = ArgumentParser(description="Generate map from input JSON files")
+parser = ArgumentParser(description="Generate mapdata file from input JSON files")
 parser.add_argument('-r', '--regions', action='store', default='regions.json', type=FileType('r'), help="Geodata regions file")
 parser.add_argument('-s', '--scriptdir', action='store', default='maps', help="Directory with the map scripts")
 parser.add_argument('-m', '--map', metavar='MAP_SCRIPT', action='store', required=True, help="Mapfile script to execute")
@@ -28,6 +28,6 @@ spec = spec_from_file_location("genmap", f"{PATH_SCRIPTDIR}/{FILE_MAPSCRIPT}.py"
 mapscript = module_from_spec(spec)
 
 spec.loader.exec_module(mapscript)
-mapdata = mapscript.map_generate(regions=regions, basemap=basemap, layers=layers)
+mapdata = mapscript.map_generate(regions, basemap, layers)
 
-FILE_OUT.write(dumps(mapdata.tojson(), sort_keys=True, separators=(',', ':')))
+FILE_OUT.write(dumps(mapdata, sort_keys=True, separators=(',', ':')))

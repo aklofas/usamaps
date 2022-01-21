@@ -1,23 +1,35 @@
 from json import load, dumps
 from unicodedata import normalize
 from copy import deepcopy
-from math import radians, degrees, sin, cos, tan, atan, pow, log, sqrt, pi
+from math import radians, degrees, sin, cos, tan, atan, sinh, asinh, pow, log, sqrt, pi
 from numpy import sign, matmul
 from shapely.geometry import Point as ShPoint
 from shapely.geometry.polygon import Polygon as ShPolygon
 from sys import argv, stderr, stdout, exit
 
 
+numfmt = 2
+
 depth = lambda L: isinstance(L, (tuple, list, dict)) and max(map(depth, L))+1
 itertype = lambda L: isinstance(L, (Group, Polygons, Points, Circle))
 fmt = lambda n: (("%."+str(numfmt)+"f") % n).rstrip('0').rstrip('.')
-name = lambda n: normalize('NFKD', n).encode("ascii", "ignore")
+#name = lambda n: normalize('NFKD', n).encode("ascii", "ignore")
 sec = lambda r: 1.0 / cos(r)
 cot = lambda r: cos(r)/sin(r)
 
+class _Projection:
+    def wraptype(t, a, b):
+        if type(t) is tuple: return (a, b)
+        elif type(t) is list: return [a, b]
+        elif type(t) is dict:
+            r = t.copy()
+            r[0] = a
+            r[1] = b
+            return r
+
 # http://mathworld.wolfram.com/LambertConformalConicProjection.html
 # Params: ll = Lat/Lon, cll = Center Lat/Lon, pl = Parallels
-class Lambert:
+class Lambert(_Projection):
     def __init__(self, cll, pl):
         self.cll_r = (radians(cll[0]), radians(cll[1]))
         self.pl_r = (radians(pl[0]), radians(pl[1]))
@@ -38,17 +50,7 @@ class Lambert:
         x = r*sin(n*(ll_r[1]-self.cll_r[1]))
         y = r0-r*cos(n*(ll_r[1]-self.cll_r[1]))
 
-        if type(ll) is tuple:
-            return (x, -y)
-
-        elif type(ll) is list:
-            return [x, -y]
-
-        elif type(ll) is dict:
-            r = ll.copy()
-            r[0] = x
-            r[1] = -y
-            return r
+        return _Projection.wraptype(ll, x, -y)
 
 
     def inv(self, p):
@@ -62,19 +64,39 @@ class Lambert:
         r = sign(n)*sqrt(x**2+(r0-y)**2)
 
         lat_r = 2*atan(pow(F/r,1/n))-0.5*pi
-        lon_r = self.cll_r[1] + atan(x/(r0-y))/n
+        lon_r = self.cll_r[1]+atan(x/(r0-y))/n
 
-        if type(p) is tuple:
-            return (degrees(lat_r), degrees(lon_r))
+        return _Projection.wraptype(p, degrees(lat_r), degrees(lon_r))
 
-        elif type(p) is list:
-            return [degrees(lat_r), degrees(lon_r)]
-            
-        elif type(p) is dict:
-            r = p.copy()
-            r[0] = degrees(lat_r)
-            r[1] = degrees(lon_r)
-            return r
+# https://mathworld.wolfram.com/MercatorProjection.html
+# Params: ll = Lat/Lon, clon = Center Lon
+class Mercator(_Projection):
+    def __init__(self, clon):
+        self.clon_r = radians(clon)
+
+    def __call__(self, ll):
+        if depth(ll) > 1: return [self.__call__(l) for l in ll]
+        ll_r = [radians(ll[0]), radians(ll[1])]
+
+        # Handle wrap-around
+        while ll_r[1]-self.clon_r > pi: ll_r[1] = ll_r[1] - 2*pi
+        while ll_r[1]-self.clon_r < -pi: ll_r[1] = ll_r[1] + 2*pi
+
+        x = ll_r[1]-self.clon_r
+        y = asinh(tan(ll_r[0]))
+
+        return _Projection.wraptype(ll, x, -y)
+
+    def inv(self, p):
+        if depth(p) > 1: return [self.inv(i) for i in p]
+        x = p[0]
+        y = -p[1]
+
+        lat_r = atan(sinh(y))
+        lon_r = self.clon_r+x
+
+        return _Projection.wraptype(p, degrees(lat_r), degrees(lon_r))
+
 
 
 class _Transform:
@@ -159,35 +181,6 @@ class Bounds:
                 (max(bds, key=lambda b: b.max[0]).max[0], max(bds, key=lambda b: b.max[1]).max[1])
             ) if len(bds) > 0 else None
 
-class Map:
-    def __init__(self, extra={}):
-        self.regions = []
-        self.extra = extra
-
-    def add(self, region):
-        if type(region) == list: self.regions.extend(region)
-        else: self.regions.append(region)
-
-    def viewbox(self):
-        bounds = Bounds.union([r.bounds() for r in self.regions])
-        if bounds is None: bounds = Bounds((0,0), (0,0))
-        return {'x': bounds.min[0], 'y': bounds.min[1], 'width': bounds.max[0]-bounds.min[0], 'height': bounds.max[1]-bounds.min[1]}
-
-    def maxbounds(self, maxwidth, maxheight):
-        vb = self.viewbox()
-        return min(maxwidth/vb['width'], maxheight/vb['height'])
-
-    def apply(self, f):
-        for r in self.regions: r.apply(f)
-
-    def tojson(self, scale=1.0, maxbounds=None, sortf=None):
-        if maxbounds is not None: scale = self.maxbounds(*maxbounds)
-        Transform(scale=(scale, scale))(self.regions)
-        vb = self.viewbox()
-        j = {'viewbox': {'x': int(vb['x']), 'y': int(vb['y']), 'width': int(vb['width']), 'height': int(vb['height'])}, 'regions': [r for region in self.regions for r in region.tojson()]}
-        if sortf is not None: j['regions'].sort(key=sortf)
-        j.update(self.extra)
-        return j
 
 class Group:
     def __init__(self, items):
@@ -377,3 +370,35 @@ class Circle:
         j = {'type': 'circle', 'cx': fmt(self.points[0][0]), 'cy': fmt(self.points[0][1]),'r': fmt(self.radius())}
         j.update(self.extra)
         return [j]
+
+
+class Map:
+    def __init__(self, name, extra={}):
+        self.name = name
+        self.regions = []
+        self.extra = extra
+
+    def add(self, region):
+        if type(region) == list: self.regions.extend(region)
+        else: self.regions.append(region)
+
+    def viewbox(self):
+        bounds = Bounds.union([r.bounds() for r in self.regions])
+        #if bounds is None: bounds = Bounds((0,0), (0,0))
+        return {'x': bounds.min[0], 'y': bounds.min[1], 'width': bounds.max[0]-bounds.min[0], 'height': bounds.max[1]-bounds.min[1]}
+
+    def maxbounds(self, maxwidth, maxheight):
+        vb = self.viewbox()
+        return min(maxwidth/vb['width'], maxheight/vb['height'])
+
+    def apply(self, f):
+        for r in self.regions: r.apply(f)
+
+    def tojson(self, scale=1.0, maxbounds=None, sortf=None):
+        if maxbounds is not None: scale = self.maxbounds(*maxbounds)
+        Transform(scale=(scale, scale))(self.regions)
+        vb = self.viewbox()
+        j = {'name': self.name, 'viewbox': {'x': int(vb['x']), 'y': int(vb['y']), 'width': int(vb['width']), 'height': int(vb['height'])}, 'regions': [r for region in self.regions for r in region.tojson()]}
+        if sortf is not None: j['regions'].sort(key=sortf)
+        j.update(self.extra)
+        return j
