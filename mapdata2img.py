@@ -17,10 +17,11 @@ mapdata = load(FILE_MAPDATA)
 
 
 def gensvgpaths(regions):
-    return "".join(['<path data-name="{name}" d="{d}" />'.format(name=part['name'], d=part['d']) for part in regions if part['type'] == 'path'])
+    #return "".join([f'<path data-name="{part["name"]}" d="{part["d"]}" />' for part in regions if part['type'] == 'path'])
+    return "".join([f'<path d="{part["d"]}" />' for part in regions if part['type'] == 'path'])
 
 def gensvgcircles(regions):
-    return "".join(['<circle data-name="{name}" cx="{cx}" cy="{cy}" r="{r}" />'.format(name=part['name'], cx=part['cx'], cy=part['cy'], r=part['r']) for part in regions if part['type'] == 'circle'])
+    return "".join([f'<circle data-name="{part["name"]}" cx="{part["cx"]}" cy="{part["cy"]}" r="{part["r"]}" />' for part in regions if part['type'] == 'circle'])
 
 def gensvgpoints(regions, viewbox):
     geo = None
@@ -45,24 +46,18 @@ def gensvgpoints(regions, viewbox):
         #img.quality(100)
         img.magick("png")
         img.write(blob)
-        return '<image x="{x}" y="{y}" width="{width}" height="{height}" xlink:href="data:image/png;base64,{data}" />'.format(x=viewbox['x'], y=viewbox['y'], width=int(viewbox['width']), height=int(viewbox['height']), data=blob.base64())
+        return f'<image x="{viewbox["x"]}" y="{viewbox["y"]}" width="{int(viewbox["width"])}" height="{int(viewbox["height"])}" xlink:href="data:image/png;base64,{blob.base64()}" />'
 
     else:
         return ""
 
 def gensvg(data):
     return (
-        '<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="{x} {y} {width} {height}">'
-            '<g fill="#000" stroke="#fff" stroke-width="1">{svgparts_paths}{svgparts_circles}</g>{svgparts_points}'
-        '</svg>'
-    ).format(x=data['viewbox']['x'], y=data['viewbox']['y'], width=data['viewbox']['width'], height=data['viewbox']['height'], svgparts_paths=gensvgpaths(data['regions']), svgparts_circles=gensvgcircles(data['regions']), svgparts_points=gensvgpoints(data['regions'], data['viewbox']))
-
-
-
-def writesvg(filename, data):
-    with open(filename, 'w') as fp:
-        fp.write(data)
+        f'<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="{data["viewbox"]["x"]} {data["viewbox"]["y"]} {data["viewbox"]["width"]} {data["viewbox"]["height"]}">'
+            f'<g fill="#000" stroke="#fff" stroke-width="1">{gensvgpaths(data["regions"])}{gensvgcircles(data["regions"])}</g>{gensvgpoints(data["regions"], data["viewbox"])}'
+        f'</svg>'
+    )
 
 
 # Make prefix directory if needed
@@ -70,4 +65,5 @@ if not isdir(DIR_PREFIX):
 	makedirs(DIR_PREFIX)
 
 for data in mapdata:
-	writesvg(f"{join(DIR_PREFIX, data['name'])}.svg", gensvg(data))
+	with open(f"{join(DIR_PREFIX, data['name'])}.svg", 'w') as fp:
+		fp.write(gensvg(data))

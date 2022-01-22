@@ -65,22 +65,6 @@ with open(f"{GAZ_PREFIX}{YEAR}/{gaz_files['places']['filename']}", encoding=gaz_
         })
 
 
-def geo_open(path, encoding):
-    geo = json_open(path, encoding)
-    if geo['type'] != "FeatureCollection":
-        raise RuntimeError(f"Bad {path} json format")
-    return geo
-
-geo_nation = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['national']['filename']}", cb_files['national']['encoding'])
-geo_states = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['states']['filename']}", cb_files['states']['encoding'])
-geo_counties_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_lq']['filename']}", cb_files['counties_lq']['encoding'])
-geo_counties_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_hq']['filename']}", cb_files['counties_hq']['encoding'])
-geo_congressionals_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_lq']['filename']}", cb_files['congressional_lq']['encoding'])
-geo_congressionals_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_hq']['filename']}", cb_files['congressional_hq']['encoding'])
-geo_urbans = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['urbanareas']['filename']}", cb_files['urbanareas']['encoding'])
-
-
-
 def region_center(name):
     for r in regions['regions']:
         if r['name'] == name: return r['center']
@@ -93,100 +77,158 @@ def ll_format(type, ll):
     if type == "Polygon": return ll_swap(ll)
     elif type == "MultiPolygon": return ll_swap([l[0] for l in ll])
 
+
+def geo_open(index, key):
+    path = f"{CB_PREFIX}{YEAR}/{index[key]['filename']}"
+    geo = json_open(path, index[key]['encoding'])
+    if geo['type'] != "FeatureCollection":
+        raise RuntimeError(f"Bad {path} json format")
+    return geo
+
+def geo_features(geo, name, q): return geo[name][q]['features']
+def geo_property(feature, name): return feature['properties'][name]
+def geo_ll(feature): return ll_format(feature['geometry']['type'], feature['geometry']['coordinates'])
+
+def geo_feature_lookup(geo, name, q, property, value):
+    for f in geo_features(geo, name, q):
+        if f['properties'][property] == value:
+            return f
+    raise RuntimeError(f"Feature {name}.{q} with ['{property}'] == '{value}' not found")
+
+geo = {
+    'nation': {'lq': geo_open(cb_files, 'national_lq'), 'hq': geo_open(cb_files, 'national_hq')},
+    'states': {'lq': geo_open(cb_files, 'states_lq'), 'hq': geo_open(cb_files, 'states_hq')},
+    'counties': {'lq': geo_open(cb_files, 'counties_lq'), 'hq': geo_open(cb_files, 'counties_hq')},
+    'congressional': {'lq': geo_open(cb_files, 'congressional_lq'), 'hq': geo_open(cb_files, 'congressional_hq')},
+    'urbans': {'hq': geo_open(cb_files, 'urbanareas')}
+}
+#geo_nation = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['national']['filename']}", cb_files['national']['encoding'])
+#geo_states = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['states']['filename']}", cb_files['states']['encoding'])
+#geo_counties_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_lq']['filename']}", cb_files['counties_lq']['encoding'])
+#geo_counties_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_hq']['filename']}", cb_files['counties_hq']['encoding'])
+#geo_congressionals_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_lq']['filename']}", cb_files['congressional_lq']['encoding'])
+#geo_congressionals_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_hq']['filename']}", cb_files['congressional_hq']['encoding'])
+#geo_urbans = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['urbanareas']['filename']}", cb_files['urbanareas']['encoding'])
+
+
 out = {
     'name': "United States",
-    'border': ll_format(geo_nation['features'][0]['geometry']['type'], geo_nation['features'][0]['geometry']['coordinates']),
+    'border': {
+        'lq': geo_ll(geo_features(geo, 'nation', 'lq')[0]),
+        'hq': geo_ll(geo_features(geo, 'nation', 'hq')[0])
+    },
     'center': region_center("United States"),
     'states': [],
     'urbanareas': []
 }
 
-for geo_state in geo_states['features']:
-    name = geo_state['properties']['NAME']
+
+# Process states
+for geo_state in geo_features(geo, 'states', 'hq'):
+    name = geo_property(geo_state, 'NAME')
+    statefp = geo_property(geo_state, 'STATEFP')
+
+    # Ignore terratory islands (don't have state data)
+    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
+        continue
+
     data = {
         'name': name,
-        'abbrev': geo_state['properties']['STUSPS'],
-        'fips': geo_state['properties']['STATEFP'],
-        'land': geo_state['properties']['ALAND'] / M2_PER_MI2,
-        'water': geo_state['properties']['AWATER'] / M2_PER_MI2,
-        'border': ll_format(geo_state['geometry']['type'], geo_state['geometry']['coordinates']),
         'center': region_center(name),
-        'counties_lq': [],
-        'counties_hq': [],
-        'congressional_lq': [],
-        'congressional_hq': [],
-        'places': [{'name': place['name'], 'land': place['land'], 'center': place['center']} for place in gaz_places if place['state'] == geo_state['properties']['STUSPS']]
+        'abbrev': geo_property(geo_state, 'STUSPS'),
+        'fips': geo_property(geo_state, 'STATEFP'),
+        'land': geo_property(geo_state, 'ALAND') / M2_PER_MI2,
+        'water': geo_property(geo_state, 'AWATER') / M2_PER_MI2,
+        'border': {
+            'lq': geo_ll(geo_feature_lookup(geo, 'states', 'lq', 'NAME', name)),
+            'hq': geo_ll(geo_state)
+        },
+        'counties': [],
+        'congressional': [],
+        'places': [{
+            'name': place['name'],
+            'land': place['land'],
+            'center': place['center']
+        } for place in gaz_places if place['state'] == geo_property(geo_state, 'STUSPS')]
     }
     out['states'].append(data)
 
+
 # Process counties
-for geo_counties_q in [(geo_counties_lq, 'counties_lq'), (geo_counties_hq, 'counties_hq')]:
-    geo_counties = geo_counties_q[0]
-    key_counties = geo_counties_q[1]
+for geo_county in geo_features(geo, 'counties', 'hq'):
+    geoid = geo_property(geo_county, 'GEOID')
+    statefp = geo_property(geo_county, 'STATEFP')
 
-    for geo_county in geo_counties['features']:
-        # Ignore terratory islands (don't have state data)
-        if geo_county['properties']['STATEFP'] in ['60', '64', '66', '68', '69', '70', '74', '78']:
-            continue
+    # Ignore terratory islands (don't have state data)
+    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
+        continue
 
-        data = {
-            'name': gaz_counties[geo_county['properties']['GEOID']]['name'],
-            'fips': geo_county['properties']['COUNTYFP'],
-            'land': geo_county['properties']['ALAND'] / M2_PER_MI2,
-            'water': geo_county['properties']['AWATER'] / M2_PER_MI2,
-            'border': ll_format(geo_county['geometry']['type'], geo_county['geometry']['coordinates']),
-            'center': gaz_counties[geo_county['properties']['GEOID']]['center']
+    data = {
+        'name': gaz_counties[geoid]['name'],
+        'center': gaz_counties[geoid]['center'],
+        'fips': geo_property(geo_county, 'COUNTYFP'),
+        'land': geo_property(geo_county, 'ALAND') / M2_PER_MI2,
+        'water': geo_property(geo_county, 'AWATER') / M2_PER_MI2,
+        'border': {
+            'lq': geo_ll(geo_feature_lookup(geo, 'counties', 'lq', 'GEOID', geoid)),
+            'hq': geo_ll(geo_county)
         }
+    }
 
-        found = False
-        for state in out['states']:
-            if state['fips'] == geo_county['properties']['STATEFP']:
-                state[key_counties].append(data)
-                found = True
-                break
+    found = False
+    for state in out['states']:
+        if state['fips'] == statefp:
+            state['counties'].append(data)
+            found = True
+            break
 
-        if not found:
-            raise RuntimeError(f"County not found in states: {data['name']}, {geo_county['properties']['STATEFP']}")
+    if not found:
+        raise RuntimeError(f"County not found in states: {data['name']}, {statefp}")
+
 
 # Process congressional districts
-for geo_congressionals_q in [(geo_congressionals_lq, 'congressional_lq'), (geo_congressionals_hq, 'congressional_hq')]:
-    geo_congressionals = geo_congressionals_q[0]
-    key_congressionals = geo_congressionals_q[1]
+for geo_congressional in geo_features(geo, 'congressional', 'hq'):
+    geoid = geo_property(geo_congressional, 'GEOID')
+    statefp = geo_property(geo_congressional, 'STATEFP')
 
-    for geo_congressional in geo_congressionals['features']:
-        # Ignore terratory islands (don't have state data)
-        if geo_congressional['properties']['STATEFP'] in ['60', '64', '66', '68', '69', '70', '74', '78']:
-            continue
+    # Ignore terratory islands (don't have state data)
+    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
+        continue
 
-        if 'NAMELSAD' in geo_congressional['properties']:
-            name = geo_congressional['properties']['NAMELSAD']
-        else:
-            session = geo_congressional['properties']['CDSESSN']
-            district = int(geo_congressional['properties'][f"CD{session}FP"], base=10)
-            name = f"Congressional District {district}"
+    if 'NAMELSAD' in geo_congressional['properties']:
+        name = geo_congressional['properties']['NAMELSAD']
+    else:
+        session = geo_congressional['properties']['CDSESSN']
+        district = int(geo_congressional['properties'][f"CD{session}FP"], base=10)
+        name = f"Congressional District {district}"
 
-        data = {
-            'name': name,
-            'land': geo_congressional['properties']['ALAND'] / M2_PER_MI2,
-            'water': geo_congressional['properties']['AWATER'] / M2_PER_MI2,
-            'border': ll_format(geo_congressional['geometry']['type'], geo_congressional['geometry']['coordinates']),
-            'center': gaz_congressional[geo_congressional['properties']['GEOID']]['center']
-        }
-
-        found = False
-        for state in out['states']:
-            if state['fips'] == geo_congressional['properties']['STATEFP']:
-                state[key_congressionals].append(data)
-                found = True
-                break
-
-        if not found:
-            raise RuntimeError(f"County not found in congressional: {data['name']}, {geo_congressional['properties']['STATEFP']}")
-
-for geo_urban in geo_urbans['features']:
     data = {
-        'name': geo_urban['properties']['NAME10'],
-        'border': ll_format(geo_urban['geometry']['type'], geo_urban['geometry']['coordinates'])
+        'name': name,
+        'center': gaz_congressional[geoid]['center'],
+        'land': geo_property(geo_congressional, 'ALAND') / M2_PER_MI2,
+        'water': geo_property(geo_congressional, 'AWATER') / M2_PER_MI2,
+        'border': {
+            'lq': geo_ll(geo_feature_lookup(geo, 'congressional', 'lq', 'GEOID', geoid)),
+            'hq': geo_ll(geo_congressional)
+        }
+    }
+
+    found = False
+    for state in out['states']:
+        if state['fips'] == statefp:
+            state['congressional'].append(data)
+            found = True
+            break
+
+    if not found:
+        raise RuntimeError(f"County not found in congressional: {data['name']}, {statefp}")
+
+for geo_urban in geo_features(geo, 'urbans', 'hq'):
+    data = {
+        'name': geo_property(geo_urban, 'NAME10'),
+        'border': {
+            'hq': geo_ll(geo_urban)
+        }
     }
     out['urbanareas'].append(data)
 
