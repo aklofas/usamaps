@@ -1,0 +1,22 @@
+Download mapping data for year desired:
+1) Download US Gazetteer files
+    - https://www.census.gov/geographies/reference-files/time-series/geo/gazetteer-files.html
+    - Needed files:
+        - Counties
+        - Congressional Districts
+        - Places
+    - Place files in gaz/gaz_{YEAR}/ directory
+    - Create files.json index file
+2) Download shape files
+    - https://www.census.gov/geographies/mapping-files/time-series/geo/cartographic-boundary.html
+    - Needed files:
+        - United States Outline: 20m, 5m
+        - States: 20m, 500k
+        - Counties: 5m, 500k
+        - Congressional Districts: 5m, 500k
+        - Urban Areas: 500k
+    - Convert all shapefiles to GeoJSON
+        - Upload zip to https://mapshaper.org
+        - Export as GeoJSON
+    - Place files in cb/cb_{YEAR} directory
+    - Create files.json index file

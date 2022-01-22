@@ -1,0 +1,11 @@
+{
+    "national_lq": {"filename": "cb_2019_us_nation_20m.json", "encoding": "utf-8"},
+    "national_hq": {"filename": "cb_2019_us_nation_5m.json", "encoding": "utf-8"},
+    "states_lq": {"filename": "cb_2019_us_state_20m.json", "encoding": "utf-8"},
+    "states_hq": {"filename": "cb_2019_us_state_500k.json", "encoding": "utf-8"},
+    "counties_lq": {"filename": "cb_2019_us_county_5m.json", "encoding": "utf-8"},
+    "counties_hq": {"filename": "cb_2019_us_county_500k.json", "encoding": "utf-8"},
+    "congressional_lq": {"filename": "cb_2019_us_cd116_5m.json", "encoding": "utf-8"},
+    "congressional_hq": {"filename": "cb_2019_us_cd116_500k.json", "encoding": "utf-8"},
+    "urbanareas": {"filename": "cb_2019_us_ua10_500k.json", "encoding": "utf-8"}
+}

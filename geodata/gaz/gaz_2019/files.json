@@ -1,0 +1,5 @@
+{
+    "counties": {"filename": "2019_Gaz_counties_national.txt", "encoding": "iso8859-15"},
+    "congressional": {"filename": "2019_Gaz_116CDs_national.txt", "encoding": "iso8859-15"},
+    "places": {"filename": "2019_Gaz_place_national.txt", "encoding": "iso8859-15"}
+}
