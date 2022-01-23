@@ -1,5 +1,8 @@
 from json import load, dumps
 from argparse import ArgumentParser, FileType
+from shapely.geometry import Point as ShPoint
+from shapely.geometry.polygon import Polygon as ShPolygon
+from shapely.geometry.multipolygon import MultiPolygon as ShMultiPolygon
 from sys import argv, stdout
 
 M2_PER_MI2 = 2589988.11 # square meters per square mile
@@ -71,7 +74,7 @@ def region_center(name):
     raise RuntimeError(f"Region center {name} not found")
 
 def ll_swap(ll):
-    return [[[o2[1], o2[0]] for o2 in o1] for o1 in ll]
+    return [[(o2[1], o2[0]) for o2 in o1] for o1 in ll]
 
 def ll_format(type, ll):
     if type == "Polygon": return ll_swap(ll)
@@ -93,7 +96,7 @@ def geo_feature_lookup(geo, name, q, property, value):
     for f in geo_features(geo, name, q):
         if f['properties'][property] == value:
             return f
-    raise RuntimeError(f"Feature {name}.{q} with ['{property}'] == '{value}' not found")
+    return None
 
 geo = {
     'nation': {'lq': geo_open(cb_files, 'national_lq'), 'hq': geo_open(cb_files, 'national_hq')},
@@ -102,13 +105,7 @@ geo = {
     'congressional': {'lq': geo_open(cb_files, 'congressional_lq'), 'hq': geo_open(cb_files, 'congressional_hq')},
     'urbans': {'hq': geo_open(cb_files, 'urbanareas')}
 }
-#geo_nation = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['national']['filename']}", cb_files['national']['encoding'])
-#geo_states = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['states']['filename']}", cb_files['states']['encoding'])
-#geo_counties_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_lq']['filename']}", cb_files['counties_lq']['encoding'])
-#geo_counties_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['counties_hq']['filename']}", cb_files['counties_hq']['encoding'])
-#geo_congressionals_lq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_lq']['filename']}", cb_files['congressional_lq']['encoding'])
-#geo_congressionals_hq = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['congressional_hq']['filename']}", cb_files['congressional_hq']['encoding'])
-#geo_urbans = geo_open(f"{CB_PREFIX}{YEAR}/{cb_files['urbanareas']['filename']}", cb_files['urbanareas']['encoding'])
+
 
 
 out = {
@@ -127,20 +124,25 @@ out = {
 for geo_state in geo_features(geo, 'states', 'hq'):
     name = geo_property(geo_state, 'NAME')
     statefp = geo_property(geo_state, 'STATEFP')
+    abbrev = geo_property(geo_state, 'STUSPS')
 
     # Ignore terratory islands (don't have state data)
-    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
-        continue
+    #if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
+    #    print(f"Skipping {name} {statefp}")
+    #    continue
+
+    lq_feature = geo_feature_lookup(geo, 'states', 'lq', 'NAME', name)
+    lq_border = geo_ll(lq_feature) if lq_feature is not None else None
 
     data = {
         'name': name,
         'center': region_center(name),
-        'abbrev': geo_property(geo_state, 'STUSPS'),
+        'abbrev': abbrev,
         'fips': geo_property(geo_state, 'STATEFP'),
         'land': geo_property(geo_state, 'ALAND') / M2_PER_MI2,
         'water': geo_property(geo_state, 'AWATER') / M2_PER_MI2,
         'border': {
-            'lq': geo_ll(geo_feature_lookup(geo, 'states', 'lq', 'NAME', name)),
+            'lq': lq_border,
             'hq': geo_ll(geo_state)
         },
         'counties': [],
@@ -149,7 +151,7 @@ for geo_state in geo_features(geo, 'states', 'hq'):
             'name': place['name'],
             'land': place['land'],
             'center': place['center']
-        } for place in gaz_places if place['state'] == geo_property(geo_state, 'STUSPS')]
+        } for place in gaz_places if place['state'] == abbrev]
     }
     out['states'].append(data)
 
@@ -159,19 +161,23 @@ for geo_county in geo_features(geo, 'counties', 'hq'):
     geoid = geo_property(geo_county, 'GEOID')
     statefp = geo_property(geo_county, 'STATEFP')
 
-    # Ignore terratory islands (don't have state data)
-    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
-        continue
+    hq_border = geo_ll(geo_county)
+    if geoid in gaz_counties:
+        center = gaz_counties[geoid]['center']
+    else:
+        # Compute center from border
+        multipoly = ShMultiPolygon([ShPolygon(points) for points in hq_border])
+        center = [multipoly.centroid.x, multipoly.centroid.y]
 
     data = {
-        'name': gaz_counties[geoid]['name'],
-        'center': gaz_counties[geoid]['center'],
+        'name': geo_property(geo_county, 'NAMELSAD'), #gaz_counties[geoid]['name'],
+        'center': center,
         'fips': geo_property(geo_county, 'COUNTYFP'),
         'land': geo_property(geo_county, 'ALAND') / M2_PER_MI2,
         'water': geo_property(geo_county, 'AWATER') / M2_PER_MI2,
         'border': {
             'lq': geo_ll(geo_feature_lookup(geo, 'counties', 'lq', 'GEOID', geoid)),
-            'hq': geo_ll(geo_county)
+            'hq': hq_border
         }
     }
 
@@ -192,8 +198,17 @@ for geo_congressional in geo_features(geo, 'congressional', 'hq'):
     statefp = geo_property(geo_congressional, 'STATEFP')
 
     # Ignore terratory islands (don't have state data)
-    if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
-        continue
+    #if statefp in ['60', '64', '66', '68', '69', '70', '74', '78']:
+    #    continue
+
+    hq_border = geo_ll(geo_congressional)
+
+    if geoid in gaz_congressional:
+        center = gaz_congressional[geoid]['center']
+    else:
+        # Compute center from border
+        multipoly = ShMultiPolygon([ShPolygon(points) for points in hq_border])
+        center = [multipoly.centroid.x, multipoly.centroid.y]
 
     if 'NAMELSAD' in geo_congressional['properties']:
         name = geo_congressional['properties']['NAMELSAD']
@@ -204,12 +219,12 @@ for geo_congressional in geo_features(geo, 'congressional', 'hq'):
 
     data = {
         'name': name,
-        'center': gaz_congressional[geoid]['center'],
+        'center': center,
         'land': geo_property(geo_congressional, 'ALAND') / M2_PER_MI2,
         'water': geo_property(geo_congressional, 'AWATER') / M2_PER_MI2,
         'border': {
             'lq': geo_ll(geo_feature_lookup(geo, 'congressional', 'lq', 'GEOID', geoid)),
-            'hq': geo_ll(geo_congressional)
+            'hq': hq_border
         }
     }
 
@@ -227,6 +242,7 @@ for geo_urban in geo_features(geo, 'urbans', 'hq'):
     data = {
         'name': geo_property(geo_urban, 'NAME10'),
         'border': {
+            'lq': [],
             'hq': geo_ll(geo_urban)
         }
     }

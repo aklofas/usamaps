@@ -55,7 +55,7 @@
         {"name": "Puerto Rico", "type": "territory", "center": [18.2176480, -66.4107992]},
         {"name": "American Samoa", "type": "territory", "center": [-14.2638166, -170.6620902]},
         {"name": "Guam", "type": "territory", "center": [13.4383000, 144.7729285]},
-        {"name": "Northern Mariana Islands", "type": "territory", "center": [14.9367835, 145.6010210]},
-        {"name": "U.S. Virgin Islands", "type": "territory", "center": [18.3267485, -64.9712501]}
+        {"name": "Commonwealth of the Northern Mariana Islands", "type": "territory", "center": [14.9367835, 145.6010210]},
+        {"name": "United States Virgin Islands", "type": "territory", "center": [18.3267485, -64.9712501]}
     ]
 }

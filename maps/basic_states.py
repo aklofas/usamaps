@@ -12,19 +12,24 @@ def map_generate(regions, nation, layers):
         proj = Lambert(state['center'], parallels)
 
         state_map = Map(state['abbrev'], extra={
-            #'name': state['name']
+            'data-name': state['name'],
+            'data-abbrev': state['abbrev']
         })
         state_map.add(Polygons(proj(state['border']['hq'])))
         out.append(state_map.tojson(maxbounds=imgb_state))
 
         county_map = Map(f"{state['abbrev']}-county")
         for county in state['counties']:
-            county_map.add(Polygons(proj(county['border']['hq'])))
+            county_map.add(Polygons(proj(county['border']['lq']), extra={
+                'data-name': county['name']
+            }))
         out.append(county_map.tojson(maxbounds=imgb_state))
 
         congressional_map = Map(f"{state['abbrev']}-congressional")
         for congressional in state['congressional']:
-            congressional_map.add(Polygons(proj(congressional['border']['hq'])))
+            congressional_map.add(Polygons(proj(congressional['border']['lq']), extra={
+                'data-name': congressional['name']
+            }))
         out.append(congressional_map.tojson(maxbounds=imgb_state))
 
     return out

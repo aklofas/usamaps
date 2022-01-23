@@ -27,7 +27,7 @@ def map_generate(regions, nation, layers):
 
 
     # (1) National map
-    m1 = Map("national1")
+    m1 = Map("National1")
     polys_nation = Polygons(proj(nation['border']['lq']))
     polys_nation.split(split_territories, returnsplit=False)
 
@@ -42,18 +42,17 @@ def map_generate(regions, nation, layers):
 
 
     # (2) National map with state outlines
-    m2 = Map("nation2")
+    m2 = Map("Nation2")
     m2_overlays = []
     for state in nation['states']:
         if state['name'] not in states.keys(): continue
         extra = {
-            'name': state['name'],
-            'abbrev': state['abbrev'],
-            #'fips': state['fips']
+            'data-name': state['name'],
+            'data-abbrev': state['abbrev']
         }
 
         if state['name'] == "District of Columbia":
-            m2_overlays.append(Circle(proj(state['center']), 0.004, extra))
+            m2_overlays.append(Circle(proj(state['center']), 0.004, extra=extra))
 
         else:
             obj = Polygons(proj(state['border']['lq']), extra=extra)
@@ -70,5 +69,5 @@ def map_generate(regions, nation, layers):
 
     return [
         m1.tojson(m1.maxbounds(*imgb_nation)),
-        m2.tojson(m2.maxbounds(*imgb_nation), sortf=lambda r: r['name'])
+        m2.tojson(m2.maxbounds(*imgb_nation), sortf=lambda r: r['data-name'])
     ]
