@@ -1,9 +1,3 @@
-build/
-mapbuild/
-mapimages/
-
+/build/
 __pycache__/
 *.py[cod]
-
-.jekyll-cache/
-.idea/

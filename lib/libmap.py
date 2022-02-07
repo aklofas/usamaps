@@ -50,7 +50,9 @@ class Lambert(_Projection):
         x = r*sin(n*(ll_r[1]-self.cll_r[1]))
         y = r0-r*cos(n*(ll_r[1]-self.cll_r[1]))
 
-        return _Projection.wraptype(ll, x, -y)
+        ll[0] = x
+        ll[1] = -y
+        #return _Projection.wraptype(ll, x, -y)
 
 
     def inv(self, p):
@@ -85,7 +87,9 @@ class Mercator(_Projection):
         x = ll_r[1]-self.clon_r
         y = asinh(tan(ll_r[0]))
 
-        return _Projection.wraptype(ll, x, -y)
+        ll[0] = x
+        ll[1] = -y
+        #return _Projection.wraptype(ll, x, -y)
 
     def inv(self, p):
         if depth(p) > 1: return [self.inv(i) for i in p]
