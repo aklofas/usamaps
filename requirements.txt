@@ -1,3 +1,4 @@
 # Requirements for usamaps
 numpy
 Shapely
+PythonMagick
