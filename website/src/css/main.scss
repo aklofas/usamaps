@@ -21,3 +21,14 @@
 
 //.mdicon:not(.mdicolor) svg { fill: $text; }
 .mdicon.baseline svg { top: -0.05em; }
+
+#navbar {
+  padding-left: 50px;
+  background-color: #f99;
+  border-bottom: 1px solid #c00;
+
+  .navbar-item:hover, .navbar-item:focus {
+    background-color: #ff8080;
+    color: #900;
+  }
+}

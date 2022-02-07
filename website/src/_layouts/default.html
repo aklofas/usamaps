@@ -2,15 +2,22 @@
 <html lang="en">
     <head>
         <title>{{ page.title }}</title>
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css" integrity="sha512-IgmDkwzs96t4SrChW29No3NXBIBv8baW490zk5aXvhCD8vuZM3yUSkbyTBcXohkySecyzIrUwiF/qV0cuPcL3Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <meta charset="utf-8" />
+        <meta http-equiv="x-ua-compatible" content="ie=edge" />
+        <meta name="viewport" content="width=device-width initial-scale=1" />
+        <!--<link rel="apple-touch-icon" href="/img/favicon.png" />-->
+        <!--<link rel="icon" type="image/png" href="/img/favicon.png" /> -->
         <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.slim.min.js" integrity="sha512-6ORWJX/LrnSjBzwefdNUyLCMTIsGoNP6NftMy2UAm1JBm6PRZCO1d7OHBStWpVFZLO+RerTvqX/Z9mBFfCJZ4A==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bulma/0.9.3/css/bulma.min.css" integrity="sha512-IgmDkwzs96t4SrChW29No3NXBIBv8baW490zk5aXvhCD8vuZM3yUSkbyTBcXohkySecyzIrUwiF/qV0cuPcL3Q==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         <link rel="stylesheet" href="/css/main.css" />
     </head>
     <body>
-        <nav class="navbar" role="navigation" aria-label="main navigation">
+        <nav id="navbar" class="navbar" role="navigation" aria-label="main navigation">
             <div class="navbar-brand">
                 <a class="navbar-item" href="/">
-                    <h2 class="is-size-4" style="font-weight: bolder">USA Maps</h2>
+                    <figure class="image">
+                        <img src="/img/logo.svg" />
+                    </figure>
                 </a>
                 <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navmenu">
                     <span aria-hidden="true"></span>
@@ -20,7 +27,7 @@
             </div>
             <div id="navmenu" class="navbar-menu">
                 <div class="navbar-start">
-                    <a class="navbar-item" href="/portfolio">{% mdicon heart-circle, .baseline, #ff3300 %} Portfolio</a>
+                    <a class="navbar-item" href="/portfolio">{% mdicon heart-circle, .baseline, #cc0000 %} Portfolio</a>
                     <a class="navbar-item" href="/examples">{% mdicon code-not-equal-variant, .baseline, #3366ff %} Examples</a>
                     <a class="navbar-item" href="https://github.com/aklofas/usamaps">{% mdicon github, .baseline, #000000 %} Code</a>
                 </div>

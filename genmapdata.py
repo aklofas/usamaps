@@ -1,6 +1,7 @@
 from json import load, dumps
 from argparse import ArgumentParser, FileType
 from importlib.util import spec_from_file_location, module_from_spec
+from os.path import dirname, join
 from sys import path
 
 parser = ArgumentParser(description="Generate mapdata file from input JSON files")
@@ -23,7 +24,7 @@ regions = load(FILE_REGIONS)
 basemap = load(FILE_BASE)
 layers = []
 
-path.extend(['lib'])
+path.extend([join(dirname(__file__), 'lib')])
 spec = spec_from_file_location("mapscript", FILE_MAPSCRIPT)
 mapscript = module_from_spec(spec)
 
