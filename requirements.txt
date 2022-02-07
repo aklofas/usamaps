@@ -1,0 +1,3 @@
+# Requirements for usamaps
+numpy
+Shapely
