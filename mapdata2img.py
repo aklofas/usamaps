@@ -1,5 +1,7 @@
 from json import load
-import PythonMagick as PM
+from wand.image import Image
+from wand.drawing import Drawing
+from wand.color import Color
 from argparse import ArgumentParser, FileType
 from os import makedirs
 from os.path import isdir, join
@@ -26,39 +28,39 @@ def gensvgpaths(regions):
 def gensvgcircles(regions):
     return "".join([f'<circle{mkdataattr(part)} cx="{part["cx"]}" cy="{part["cy"]}" r="{part["r"]}"/>' for part in regions if part['type'] == 'circle'])
 
-def gensvgpoints(regions, viewbox):
-    geo = None
-    img = None
-    hasimg = False
-    for part in regions:
-        if part['type'] == 'points':
-            if not hasimg:
-                geo = PM.Geometry(int(viewbox['width']), int(viewbox['height']))
-                img = PM.Image(geo, PM.Color("none"))
-                img.fillColor(PM.Color("red"))
-                hasimg = True
-
-            for point in part['points']:
-                x1, y1 = (int(point['0']-viewbox['x']), int(point['1']-viewbox['y']))
-                x2, y2 = (x1, y1+0.75)
-                if x1 < geo.width() and y1 < geo.height():
-                    img.draw(PM.DrawableCircle(x1, y1, x2, y2))
-
-    if hasimg:
-        blob = PM.Blob()
-        #img.quality(100)
-        img.magick("png")
-        img.write(blob)
-        return f'<image x="{viewbox["x"]}" y="{viewbox["y"]}" width="{int(viewbox["width"])}" height="{int(viewbox["height"])}" xlink:href="data:image/png;base64,{blob.base64()}" />'
-
-    else:
-        return ""
+#def gensvgpoints(regions, viewbox):
+#    img = None
+#    hasimg = False
+#    for part in regions:
+#        if part['type'] == 'points':
+#            if not hasimg:
+#                img = Image(width=int(viewbox['width']), height=int(viewbox['height']))
+#                img = PM.Image(geo, PM.Color("none"))
+#                img.fillColor(PM.Color("red"))
+#                hasimg = True
+#
+#            for point in part['points']:
+#                x1, y1 = (int(point['0']-viewbox['x']), int(point['1']-viewbox['y']))
+#                x2, y2 = (x1, y1+0.75)
+#                if x1 < viewbox['width'] and y1 < viewbox['height']:
+#                    img.draw(PM.DrawableCircle(x1, y1, x2, y2))
+#
+#    if hasimg:
+#        blob = PM.Blob()
+#        #img.quality(100)
+#        img.magick("png")
+#        img.write(blob)
+#        return f'<image x="{viewbox["x"]}" y="{viewbox["y"]}" width="{int(viewbox["width"])}" height="{int(viewbox["height"])}" xlink:href="data:image/png;base64,{blob.base64()}" />'
+#
+#    else:
+#        return ""
+## {gensvgpoints(data["regions"], data["viewbox"])}
 
 def gensvg(data):
     return (
         f'<?xml version="1.0" encoding="UTF-8" standalone="no"?>'
         f'<svg{mkdataattr(data)} xmlns="http://www.w3.org/2000/svg" viewBox="{data["viewbox"]["x"]} {data["viewbox"]["y"]} {data["viewbox"]["width"]} {data["viewbox"]["height"]}">'
-            f'<g fill="#000" stroke="#fff" stroke-width="1">{gensvgpaths(data["regions"])}{gensvgcircles(data["regions"])}</g>{gensvgpoints(data["regions"], data["viewbox"])}'
+            f'<g fill="#000" stroke="#fff" stroke-width="1">{gensvgpaths(data["regions"])}{gensvgcircles(data["regions"])}</g>'
         f'</svg>'
     )
 
