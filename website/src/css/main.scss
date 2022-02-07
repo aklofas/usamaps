@@ -1,0 +1,23 @@
+---
+---
+
+.mdicon {
+  display: inline-flex;
+  align-self: center;
+  margin-right: 0.25em;
+  margin-left: 0.25em;
+
+  &:not(.inline) {
+    margin-right: 0.5em;
+  }
+
+  svg {
+    position: relative;
+    top: .125em;
+    height: 1em;
+    width: 1em;
+  }
+}
+
+//.mdicon:not(.mdicolor) svg { fill: $text; }
+.mdicon.baseline svg { top: -0.05em; }

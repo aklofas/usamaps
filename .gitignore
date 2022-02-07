@@ -1,7 +1,8 @@
 build/
+mapbuild/
 
 __pycache__/
 *.py[cod]
 
 .jekyll-cache/
-
+.idea/
