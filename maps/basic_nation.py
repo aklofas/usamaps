@@ -75,7 +75,10 @@ def map_generate(regions, nation, layers):
         }
 
         if state['name'] == "District of Columbia":
-            m2_overlays.append(Circle(state['center'], 0.004, extra=extra))
+            obj = Circle(state['center'], 0.22, extra=extra)
+            proj_nation(obj)
+
+            m2_overlays.append(obj)
 
         else:
             border = state['border']['lq']
