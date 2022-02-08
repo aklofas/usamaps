@@ -15,9 +15,10 @@
         <nav id="navbar" class="navbar" role="navigation" aria-label="main navigation">
             <div class="navbar-brand">
                 <a class="navbar-item" href="/">
-                    <figure class="image" style="padding-left: 50px;">
-                        <img src="/img/generated/logo.svg" />
+                    <figure class="image">
+                        {% mdicon generated/nation-logo, .inline, .logo %}
                     </figure>
+                    {% mdicon chevron-double-right, .baseline %}
                 </a>
                 <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false" data-target="navmenu">
                     <span aria-hidden="true"></span>

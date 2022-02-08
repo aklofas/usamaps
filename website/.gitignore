@@ -2,5 +2,5 @@
 /build/
 /mapbuild/
 /mapimages/
-/src/img/generated/
 /src/.jekyll-cache/
+/src/**/generated

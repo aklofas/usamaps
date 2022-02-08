@@ -19,7 +19,7 @@ def map_generate(regions, nation, layers):
     polys_nation.split(split_territories, returnsplit=False)
 
     proj = Lambert(nation['center'], parallels)
-    polys_nation.apply(proj)
+    proj(polys_nation)
 
     m = Map("nation-logo")
     m.add([polys_nation])

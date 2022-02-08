@@ -19,15 +19,35 @@
   }
 }
 
-//.mdicon:not(.mdicolor) svg { fill: $text; }
 .mdicon.baseline svg { top: -0.05em; }
 
 #navbar {
   background-color: #f99;
   border-bottom: 1px solid #c00;
 
+  @media (min-width: 1023px) {
+    .logo {
+      margin-left: 100px;
+    }
+  }
+
+  .logo svg {
+    width: inherit;
+    height: 1.5rem;
+  }
+
   .navbar-item:hover, .navbar-item:focus {
     background-color: #ff8080;
     color: #900;
+  }
+}
+
+.hero {
+  background-color: #fcc;
+}
+
+#maphero {
+  svg {
+    height: 400px;
   }
 }

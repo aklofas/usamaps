@@ -17,15 +17,18 @@ fmt = lambda n: (("%."+str(numfmt)+"f") % n).rstrip('0').rstrip('.')
 sec = lambda r: 1.0 / cos(r)
 cot = lambda r: cos(r)/sin(r)
 
+#class _Projection:
+#    def wraptype(t, a, b):
+#        if type(t) is tuple: return (a, b)
+#        elif type(t) is list: return [a, b]
+#        elif type(t) is dict:
+#            r = t.copy()
+#            r[0] = a
+#            r[1] = b
+#            return r
 class _Projection:
-    def wraptype(t, a, b):
-        if type(t) is tuple: return (a, b)
-        elif type(t) is list: return [a, b]
-        elif type(t) is dict:
-            r = t.copy()
-            r[0] = a
-            r[1] = b
-            return r
+    pass
+
 
 # http://mathworld.wolfram.com/LambertConformalConicProjection.html
 # Params: ll = Lat/Lon, cll = Center Lat/Lon, pl = Parallels
@@ -34,9 +37,13 @@ class Lambert(_Projection):
         self.cll_r = (radians(cll[0]), radians(cll[1]))
         self.pl_r = (radians(pl[0]), radians(pl[1]))
 
-    def __call__(self, ll):
-        if depth(ll) > 1: return [self.__call__(l) for l in ll]
-        ll_r = [radians(ll[0]), radians(ll[1])]
+    def __call__(self, data):
+        if itertype(data): data.bbox = None
+        if itertype(data) or itertype(data[0]) or depth(data) > 1:
+            for d in data: self.__call__(d)
+            return
+
+        ll_r = [radians(data[0]), radians(data[1])]
 
         # Handle wrap-around
         while ll_r[1]-self.cll_r[1] > pi: ll_r[1] = ll_r[1] - 2*pi
@@ -50,10 +57,8 @@ class Lambert(_Projection):
         x = r*sin(n*(ll_r[1]-self.cll_r[1]))
         y = r0-r*cos(n*(ll_r[1]-self.cll_r[1]))
 
-        ll[0] = x
-        ll[1] = -y
-        #return _Projection.wraptype(ll, x, -y)
-
+        data[0], data[1] = x, -y
+        return data
 
     def inv(self, p):
         if depth(p) > 1: return [self.inv(i) for i in p]
@@ -68,7 +73,9 @@ class Lambert(_Projection):
         lat_r = 2*atan(pow(F/r,1/n))-0.5*pi
         lon_r = self.cll_r[1]+atan(x/(r0-y))/n
 
-        return _Projection.wraptype(p, degrees(lat_r), degrees(lon_r))
+        p[0], p[1] = degrees(lat_r), degrees(lon_r)
+        return p
+
 
 # https://mathworld.wolfram.com/MercatorProjection.html
 # Params: ll = Lat/Lon, clon = Center Lon
@@ -76,9 +83,13 @@ class Mercator(_Projection):
     def __init__(self, clon):
         self.clon_r = radians(clon)
 
-    def __call__(self, ll):
-        if depth(ll) > 1: return [self.__call__(l) for l in ll]
-        ll_r = [radians(ll[0]), radians(ll[1])]
+    def __call__(self, data):
+        if itertype(data): data.bbox = None
+        if itertype(data) or itertype(data[0]) or depth(data) > 1:
+            for d in data: self.__call__(d)
+            return
+
+        ll_r = [radians(data[0]), radians(data[1])]
 
         # Handle wrap-around
         while ll_r[1]-self.clon_r > pi: ll_r[1] = ll_r[1] - 2*pi
@@ -87,9 +98,8 @@ class Mercator(_Projection):
         x = ll_r[1]-self.clon_r
         y = asinh(tan(ll_r[0]))
 
-        ll[0] = x
-        ll[1] = -y
-        #return _Projection.wraptype(ll, x, -y)
+        data[0], data[1] = x, -y
+        return data
 
     def inv(self, p):
         if depth(p) > 1: return [self.inv(i) for i in p]
@@ -99,7 +109,8 @@ class Mercator(_Projection):
         lat_r = atan(sinh(y))
         lon_r = self.clon_r+x
 
-        return _Projection.wraptype(p, degrees(lat_r), degrees(lon_r))
+        p[0], p[1] = degrees(lat_r), degrees(lon_r)
+        return p
 
 
 
@@ -113,9 +124,11 @@ class _Transform:
         if itertype(data) or itertype(data[0]) or depth(data) > 1:
             for d in data: self.__call__(d)
             return
+
         a = matmul(self.M, [[data[0]],[data[1]],[1]])
-        data[0] = a[0][0]
-        data[1] = a[1][0]
+
+        data[0], data[1] = a[0][0], a[1][0]
+        return data
 
     def __mul__(self, other):
         return _Transform(matmul(self.M, other.M))
